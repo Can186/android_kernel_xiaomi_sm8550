@@ -33,7 +33,7 @@ jobs:
         # 将 Clang 的 bin 目录添加到环境变量 PATH 中
         echo "${{ github.workspace }}/toolchain/bin" >> $GITHUB_PATH
 
-     - name: Setup Environment Variables
+    - name: Setup Environment Variables
       run: |
         # 基础架构设置
         echo "ARCH=arm64" >> $GITHUB_ENV
