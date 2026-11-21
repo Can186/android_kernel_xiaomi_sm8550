@@ -1,0 +1,96 @@
+name: Build Kernel with Sukisu Nova
+
+on:
+  workflow_dispatch: # 允许在 GitHub 网页上手动点击运行
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04 # 使用较新的 Ubuntu 环境
+
+    steps:
+    - name: Checkout Kernel Source
+      uses: actions/checkout@v4
+
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          bc bison build-essential flex git libssl-dev \
+          libelf-dev python3 zip unzip libncurses-dev \
+          device-tree-compiler cpio rsync wget
+        sudo apt-get install -y dwarves
+
+    - name: Download and Setup Clang (LLVM 14.0.6 RHEL 8.4)
+      run: |
+        # 下载你指定的 Clang 版本
+        CLANG_URL="https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/clang+llvm-14.0.6-x86_64-linux-gnu-rhel-8.4.tar.xz"
+        wget "$CLANG_URL" -O clang.tar.xz
+        
+        # 解压到特定目录
+        mkdir -p ${{ github.workspace }}/toolchain
+        tar -xf clang.tar.xz -C ${{ github.workspace }}/toolchain --strip-components=1
+        
+        # 将 Clang 的 bin 目录添加到环境变量 PATH 中
+        echo "${{ github.workspace }}/toolchain/bin" >> $GITHUB_PATH
+
+     - name: Setup Environment Variables
+      run: |
+        # 基础架构设置
+        echo "ARCH=arm64" >> $GITHUB_ENV
+        echo "SUBARCH=arm64" >> $GITHUB_ENV
+        pwd
+        clang --version
+        lscpu
+        # 编译器设置
+        echo "CC=clang" >> $GITHUB_ENV
+        echo "CLANG_TRIPLE=aarch64-linux-gnu-" >> $GITHUB_ENV
+        echo "CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
+        echo "CROSS_COMPILE_ARM32=arm-linux-gnueabi-" >> $GITHUB_ENV
+        patch -p1 < 001.GKI-below-6.12-fix_sysvipc_kabi_6_7_8.patch
+    - name: Integrate BakaSU into Kernel Source
+      run: |
+        # 执行 Sukisu Nova 官方提供的自动集成脚本
+        # 这个脚本会自动克隆 Sukisu Nova 源码并修改内核的 Kconfig/Makefile
+        curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s builtin
+    - name: Apply SUSFS Kernel Patches
+      working-directory: ${{ github.workspace }}
+      run: |
+        # 1. 克隆 SUSFS 仓库 (修正分支名)
+        git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-android13-5.15 susfs4ksu
+        
+        # 2. 复制补丁所需的文件到内核源码树
+        cp susfs4ksu/kernel_patches/fs/* ./fs/
+        cp susfs4ksu/kernel_patches/include/linux/* ./include/linux/
+        
+        # 3. 应用内核主补丁
+        # 注意：如果你的源码目录不是当前目录，请调整路径
+        patch -p1 --forward < susfs4ksu/kernel_patches/50_add_susfs_in_gki-android13-5.15.patch
+        
+        # 4. （非常重要）对于 5.15 早期版本，可能需要修复上下文
+        # 那个 txt 脚本里有很多针对性的 sed 命令，如果你的补丁打失败了，
+        # 需要去那个 txt 里把对应 5.15 的 sed 修复命令抄过来。
+    - name: Configure Defconfig
+      run: |
+        make ARCH=arm64 LLVM=1 O=out gki_defconfig
+        
+
+    - name: Build Kernel
+      run: |
+        # 使用多核编译加速，-j 后面的数字是当前可用 CPU 核心数 + 2
+        make -j$(nproc --all) O=out LLVM=1 ARCH=arm64 \
+          CC=clang \
+          CLANG_TRIPLE=aarch64-linux-gnu- \
+          CROSS_COMPILE=aarch64-linux-gnu- \
+          CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+
+    - name: Upload Kernel Image
+      uses: actions/upload-artifact@v4
+      with:
+        name: kernel-image
+        path: |
+          out/arch/arm64/boot/Image
+          out/System.map
+          out/arch/arm64/boot/Image.gz
+          out/drivers/block/zram/zram.ko
+          out/mm/zsmalloc.ko
+          out/drivers/block/zram/zram.mod.o
