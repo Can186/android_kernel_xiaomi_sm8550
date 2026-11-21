@@ -18,6 +18,7 @@ jobs:
           bc bison build-essential flex git libssl-dev \
           libelf-dev python3 zip unzip libncurses-dev \
           device-tree-compiler cpio rsync wget
+        sudo apt-get install -y dwarves
 
     - name: Download and Setup Clang (LLVM 14.0.6 RHEL 8.4)
       run: |
