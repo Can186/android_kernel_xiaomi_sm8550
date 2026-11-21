@@ -89,3 +89,8 @@ jobs:
         name: kernel-image
         path: |
           out/arch/arm64/boot/Image
+          out/System.map
+          out/arch/arm64/boot/Image.gz
+          out/drivers/block/zram/zram.ko
+          out/mm/zsmalloc.ko
+          out/drivers/block/zram/zram.mod.o
