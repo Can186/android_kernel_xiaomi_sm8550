@@ -52,6 +52,23 @@ jobs:
         # 执行 BakaSU 官方提供的自动集成脚本
         # 这个脚本会自动克隆 BakaSU 源码并修改内核的 Kconfig/Makefile
         curl -LSs "https://raw.githubusercontent.com/Baka-SU/BakaSU/main/kernel/setup.sh" | bash
+    - name: Apply SUSFS Kernel Patches
+      working-directory: ${{ github.workspace }}
+      run: |
+        # 1. 克隆 SUSFS 仓库 (修正分支名)
+        git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-android13-5.15 susfs4ksu
+        
+        # 2. 复制补丁所需的文件到内核源码树
+        cp susfs4ksu/kernel_patches/fs/* ./fs/
+        cp susfs4ksu/kernel_patches/include/linux/* ./include/linux/
+        
+        # 3. 应用内核主补丁
+        # 注意：如果你的源码目录不是当前目录，请调整路径
+        patch -p1 --forward < susfs4ksu/kernel_patches/50_add_susfs_in_gki-android13-5.15.patch
+        
+        # 4. （非常重要）对于 5.15 早期版本，可能需要修复上下文
+        # 那个 txt 脚本里有很多针对性的 sed 命令，如果你的补丁打失败了，
+        # 需要去那个 txt 里把对应 5.15 的 sed 修复命令抄过来。
     - name: Configure Defconfig
       run: |
         make ARCH=arm64 LLVM=1 O=out gki_defconfig
