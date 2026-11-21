@@ -38,6 +38,7 @@ jobs:
         echo "ARCH=arm64" >> $GITHUB_ENV
         echo "SUBARCH=arm64" >> $GITHUB_ENV
         pwd
+        clang --version
         # 编译器设置
         echo "CC=clang" >> $GITHUB_ENV
         echo "CLANG_TRIPLE=aarch64-linux-gnu-" >> $GITHUB_ENV
@@ -46,7 +47,7 @@ jobs:
         patch -p1 < 001.GKI-below-6.12-fix_sysvipc_kabi_6_7_8.patch
     - name: Configure Defconfig
       run: |
-        make ARCH=arch64 0=out gki_defconfig
+        make ARCH=arm64 O=out gki_defconfig
         
 
     - name: Build Kernel
