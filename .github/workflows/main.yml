@@ -1,0 +1,66 @@
+name: Build SM8550 Kernel
+
+on:
+  workflow_dispatch: # 允许在 GitHub 网页上手动点击运行
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04 # 使用较新的 Ubuntu 环境
+
+    steps:
+    - name: Checkout Kernel Source
+      uses: actions/checkout@v4
+
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          bc bison build-essential flex git libssl-dev \
+          libelf-dev python3 zip unzip libncurses-dev \
+          device-tree-compiler cpio rsync wget
+
+    - name: Download and Setup Clang (LLVM 14.0.6 RHEL 8.4)
+      run: |
+        # 下载你指定的 Clang 版本
+        CLANG_URL="https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.6/clang+llvm-14.0.6-x86_64-linux-gnu-rhel-8.4.tar.xz"
+        wget "$CLANG_URL" -O clang.tar.xz
+        
+        # 解压到特定目录
+        mkdir -p ${{ github.workspace }}/toolchain
+        tar -xf clang.tar.xz -C ${{ github.workspace }}/toolchain --strip-components=1
+        
+        # 将 Clang 的 bin 目录添加到环境变量 PATH 中
+        echo "${{ github.workspace }}/toolchain/bin" >> $GITHUB_PATH
+
+    - name: Setup Environment Variables
+      run: |
+        # 基础架构设置
+        echo "ARCH=arm64" >> $GITHUB_ENV
+        echo "SUBARCH=arm64" >> $GITHUB_ENV
+        pwd
+        # 编译器设置
+        echo "CC=clang" >> $GITHUB_ENV
+        echo "CLANG_TRIPLE=aarch64-linux-gnu-" >> $GITHUB_ENV
+        echo "CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
+        echo "CROSS_COMPILE_ARM32=arm-linux-gnueabi-" >> $GITHUB_ENV
+        patch -p1 < 001.GKI-below-6.12-fix_sysvipc_kabi_6_7_8.patch
+    - name: Configure Defconfig
+      run: |
+        make ARCH=arch64 0=out gki_defconfig
+        
+
+    - name: Build Kernel
+      run: |
+        # 使用多核编译加速，-j 后面的数字是当前可用 CPU 核心数 + 2
+        make -j$(nproc --all) O=out ARCH=arm64 \
+          CC=clang \
+          CLANG_TRIPLE=aarch64-linux-gnu- \
+          CROSS_COMPILE=aarch64-linux-gnu- \
+          CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+
+    - name: Upload Kernel Image
+      uses: actions/upload-artifact@v4
+      with:
+        name: kernel-image
+        path: |
+          out/arch/arm64/boot/Image
