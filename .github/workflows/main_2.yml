@@ -1,4 +1,4 @@
-name: Build Kernel with Sukisu Nova
+name: Build Kernel with Sukisu Nova and DroidSpaces
 
 on:
   workflow_dispatch: # 允许在 GitHub 网页上手动点击运行
@@ -72,7 +72,9 @@ jobs:
     - name: Configure Defconfig
       run: |
         make ARCH=arm64 LLVM=1 O=out gki_defconfig
-        
+        ./scripts/config --file out/.config -e KPM
+        make ARCH=arm64 LLVM=1 O=out olddefconfig
+        grep "CONFIG_KPM" out/.config
 
     - name: Build Kernel
       run: |
@@ -86,7 +88,7 @@ jobs:
     - name: Upload Kernel Image
       uses: actions/upload-artifact@v4
       with:
-        name: kernel-image
+        name: kernel-image with Sukisu_Nova and DroidSpcaces
         path: |
           out/arch/arm64/boot/Image
           out/System.map
