@@ -39,6 +39,7 @@ jobs:
         echo "SUBARCH=arm64" >> $GITHUB_ENV
         pwd
         clang --version
+        lscpu
         # 编译器设置
         echo "CC=clang" >> $GITHUB_ENV
         echo "CLANG_TRIPLE=aarch64-linux-gnu-" >> $GITHUB_ENV
@@ -47,13 +48,13 @@ jobs:
         patch -p1 < 001.GKI-below-6.12-fix_sysvipc_kabi_6_7_8.patch
     - name: Configure Defconfig
       run: |
-        make ARCH=arm64 O=out gki_defconfig
+        make ARCH=arm64 LLVM=1 O=out gki_defconfig
         
 
     - name: Build Kernel
       run: |
         # 使用多核编译加速，-j 后面的数字是当前可用 CPU 核心数 + 2
-        make -j$(nproc --all) O=out ARCH=arm64 \
+        make -j$(nproc --all) O=out LLVM=1 ARCH=arm64 \
           CC=clang \
           CLANG_TRIPLE=aarch64-linux-gnu- \
           CROSS_COMPILE=aarch64-linux-gnu- \
