@@ -47,6 +47,11 @@ jobs:
         echo "CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
         echo "CROSS_COMPILE_ARM32=arm-linux-gnueabi-" >> $GITHUB_ENV
         patch -p1 < 001.GKI-below-6.12-fix_sysvipc_kabi_6_7_8.patch
+    - name: Integrate BakaSU into Kernel Source
+      run: |
+        # 执行 BakaSU 官方提供的自动集成脚本
+        # 这个脚本会自动克隆 BakaSU 源码并修改内核的 Kconfig/Makefile
+        curl -LSs "https://raw.githubusercontent.com/Baka-SU/BakaSU/main/kernel/setup.sh" | bash
     - name: Configure Defconfig
       run: |
         make ARCH=arm64 LLVM=1 O=out gki_defconfig
