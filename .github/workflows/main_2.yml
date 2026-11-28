@@ -49,7 +49,7 @@ jobs:
         patch -p1 < 001.GKI-below-6.12-fix_sysvipc_kabi_6_7_8.patch
     - name: Integrate BakaSU into Kernel Source
       run: |
-        curl -LSs "https://raw.githubusercontent.com/Baka-SU/BakaSU/main/kernel/setup.sh" | bash
+        curl -LSs "https://git.zako.shirkneko.top:20004/shirkneko/SukiSU/raw/branch/main/kernel/setup.sh" | bash -s builtin-new
     - name: Apply SUSFS Kernel Patches
       working-directory: ${{ github.workspace }}
       run: |
