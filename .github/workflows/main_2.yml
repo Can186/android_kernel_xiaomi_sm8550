@@ -49,9 +49,7 @@ jobs:
         patch -p1 < 001.GKI-below-6.12-fix_sysvipc_kabi_6_7_8.patch
     - name: Integrate BakaSU into Kernel Source
       run: |
-        # 执行 Sukisu Nova 官方提供的自动集成脚本
-        # 这个脚本会自动克隆 Sukisu Nova 源码并修改内核的 Kconfig/Makefile
-        curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s builtin
+        curl -LSs "https://raw.githubusercontent.com/Baka-SU/BakaSU/main/kernel/setup.sh" | bash
     - name: Apply SUSFS Kernel Patches
       working-directory: ${{ github.workspace }}
       run: |
